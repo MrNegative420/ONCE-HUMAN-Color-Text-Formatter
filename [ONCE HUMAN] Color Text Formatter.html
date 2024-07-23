@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Text Formatter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+        }
+        .color-input {
+            width: 80px;
+            margin-right: 10px;
+        }
+        .color-label {
+            margin-right: 10px;
+        }
+        textarea {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>[ONCE HUMAN] Color Text Formatter</h1>
+    <p>Enter your text below, select colors for each letter, word, or sentence, and choose to add a new line if needed:</p>
+    <p class="warning">Warning: The total length of the generated string must not exceed 140 characters, including text, color codes, and symbols. This limit includes spaces, numbers, and symbols. Ensure your input fits within this constraint to avoid cutoff issues in the game.</p>
+    <form id="colorForm" onsubmit="return false;">
+        <label for="colorMode">Color Mode: </label>
+        <select id="colorMode">
+            <option value="letter">Letter</option>
+            <option value="word">Word</option>
+            <option value="sentence">Sentence</option>
+        </select>
+        <label for="inputText">Text: </label>
+        <textarea id="inputText" name="inputText" rows="10" cols="50" required></textarea>
+        <br>
+        <button type="button" onclick="addNewLine()">Add New Line</button>
+        <button type="button" onclick="generateColoredText()">Generate</button>
+        <button type="button" onclick="resetForm()">Reset</button>
+    </form>
+
+    <div id="colorInputs"></div>
+    <div id="result"></div>
+    <button id="copyButton" style="display: none;" onclick="copyToClipboard()">Copy</button>
+
+    <p>Character count: <span id="charCount">0</span>/140</p>
+
+    <script>
+        let lines = [];
+        let includeNewLine = false;
+
+        document.getElementById('inputText').addEventListener('input', function() {
+            updateColorInputs();
+            updateCharacterCount();
+        });
+
+        function updateColorInputs() {
+            const text = document.getElementById('inputText').value;
+            const colorInputsDiv = document.getElementById('colorInputs');
+            colorInputsDiv.innerHTML = '';
+            lines = text.split('\n');
+
+            const colorMode = document.getElementById('colorMode').value;
+
+            lines.forEach((line, lineIndex) => {
+                let segments = [];
+                if (colorMode === 'letter') {
+                    segments = [...line];
+                } else if (colorMode === 'word') {
+                    segments = line.split(' ');
+                } else if (colorMode === 'sentence') {
+                    segments = [line];
+                }
+
+                segments.forEach((segment, segmentIndex) => {
+                    if (segment.length > 0 && segment !== ' ') {
+                        const label = document.createElement('label');
+                        label.className = 'color-label';
+                        label.innerText = segment;
+                        label.htmlFor = `color${lineIndex}-${segmentIndex}`;
+
+                        const input = document.createElement('input');
+                        input.type = 'color';
+                        input.className = 'color-input';
+                        input.id = `color${lineIndex}-${segmentIndex}`;
+                        input.name = `color${lineIndex}-${segmentIndex}`;
+                        input.value = '#000000';
+                        input.title = `Color for '${segment}'`;
+
+                        colorInputsDiv.appendChild(label);
+                        colorInputsDiv.appendChild(input);
+                    } else {
+                        const space = document.createElement('span');
+                        space.className = 'color-label';
+                        space.innerText = ' ';
+                        colorInputsDiv.appendChild(space);
+                    }
+                });
+            });
+        }
+
+        function addNewLine() {
+            includeNewLine = true;
+            const textArea = document.getElementById('inputText');
+            const cursorPos = textArea.selectionStart;
+            const beforeCursor = textArea.value.substring(0, cursorPos);
+            const afterCursor = textArea.value.substring(cursorPos);
+
+            textArea.value = beforeCursor + '\n' + afterCursor;
+            textArea.focus();
+            textArea.selectionStart = textArea.selectionEnd = cursorPos + 1;
+            updateColorInputs(); // Update color inputs to reflect the new line
+            updateCharacterCount(); // Update character count to reflect the new line
+        }
+
+        function generateColoredText() {
+            const text = document.getElementById('inputText').value;
+            let result = '';
+            lines = text.split('\n');
+            const colorMode = document.getElementById('colorMode').value;
+
+            lines.forEach((line, lineIndex) => {
+                let segments = [];
+                if (colorMode === 'letter') {
+                    segments = [...line];
+                } else if (colorMode === 'word') {
+                    segments = line.split(' ');
+                } else if (colorMode === 'sentence') {
+                    segments = [line];
+                }
+
+                segments.forEach((segment, segmentIndex) => {
+                    if (segment !== ' ') {
+                        const color = document.getElementById(`color${lineIndex}-${segmentIndex}`).value.substring(1); // Remove the '#'
+                        result += `#c${color}${segment}`;
+                    } else {
+                        result += segment;
+                    }
+                    if (colorMode === 'word' || colorMode === 'sentence') {
+                        result += ' '; // Add space after each word/sentence
+                    }
+                });
+
+                if (includeNewLine || lineIndex < lines.length - 1) {
+                    result += '#r'; // Add a new line at the end if selected or if it's not the last line
+                }
+            });
+
+            includeNewLine = false; // Reset the new line flag
+
+            // Handle length constraint
+            if (result.length > 140) {
+                alert('Generated text exceeds the maximum allowed length and may not display correctly.');
+                result = result.substring(0, 140);
+            }
+
+            document.getElementById('result').innerText = result;
+            document.getElementById('charCount').innerText = result.length; // Update the character count
+            document.getElementById('copyButton').style.display = 'block';
+        }
+
+        function resetForm() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('colorInputs').innerHTML = '';
+            document.getElementById('result').innerText = '';
+            document.getElementById('charCount').innerText = '0'; // Reset the character count
+            document.getElementById('copyButton').style.display = 'none';
+            // Keep the selected color mode
+            includeNewLine = false; // Reset the new line flag
+        }
+
+        function updateCharacterCount() {
+            const text = document.getElementById('inputText').value;
+            let result = '';
+            lines = text.split('\n');
+            const colorMode = document.getElementById('colorMode').value;
+
+            lines.forEach((line, lineIndex) => {
+                let segments = [];
+                if (colorMode === 'letter') {
+                    segments = [...line];
+                } else if (colorMode === 'word') {
+                    segments = line.split(' ');
+                } else if (colorMode === 'sentence') {
+                    segments = [line];
+                }
+
+                segments.forEach((segment, segmentIndex) => {
+                    if (segment !== ' ') {
+                        const color = '#000000'.substring(1); // Assume default color black
+                        result += `#c${color}${segment}`;
+                    } else {
+                        result += segment;
+                    }
+                    if (colorMode === 'word' || colorMode === 'sentence') {
+                        result += ' '; // Add space after each word/sentence
+                    }
+                });
+
+                if (includeNewLine || lineIndex < lines.length - 1) {
+                    result += '#r'; // Add a new line at the end if selected or if it's not the last line
+                }
+            });
+
+            document.getElementById('charCount').innerText = result.length; // Update the character count
+        }
+
+        function copyToClipboard() {
+            const resultText = document.getElementById('result').innerText;
+            navigator.clipboard.writeText(resultText).then(() => {
+                alert('Text copied to clipboard!');
+            }).catch(err => {
+                console.error('Error copying text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
